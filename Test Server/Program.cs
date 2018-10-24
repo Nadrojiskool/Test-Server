@@ -18,19 +18,21 @@ namespace Test_Server
 
             while (true)
             {
-                var remoteEP = new IPEndPoint(IPAddress.Any, 57000);
+                IPEndPoint remoteEP = new IPEndPoint(IPAddress.Any, 57000);
                 var data = udpServer.Receive(ref remoteEP); // listen on port 57000
                 List<byte[]> packet = new List<byte[]>();
                 Console.Write($"receive data from {remoteEP}\n");
                 Console.Write($"Adding Username & Endpoint to Cache\n");
                 UserList.Add(new User(Encoding.Default.GetString(data), remoteEP));
-                if (UserList.Count() > connectedUsers) { Console.WriteLine($"User Cached!"); connectedUsers++; udpServer.Send(new byte[] { 1 }, 1, remoteEP); }
+                if (UserList.Count() > connectedUsers) { Console.WriteLine($"User {Encoding.Default.GetString(data)} Cached!"); connectedUsers++; udpServer.Send(new byte[] { 1 }, 1, remoteEP); }
                 else { Console.WriteLine($"MERP!"); }
                 for (int i = 0; i < 20; i++)
                 {
                     packet.Add(udpServer.Receive(ref remoteEP));
+                    Console.WriteLine($"Received {i + 1} Packet(s)!");
+                    udpServer.Send(new byte[] { 1 }, 1, remoteEP);
                 }
-                Console.Write($"{packet.Count()}\n");
+                Console.Write($"Total Packets Received: {packet.Count()}\n");
             }
         }
     }
