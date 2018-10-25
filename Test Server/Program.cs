@@ -14,12 +14,6 @@ namespace Test_Server
     {
         public static bool messageReceived = false;
 
-        public struct UdpState
-        {
-            public IPEndPoint Endpoint;
-            public UdpClient Client;
-        }
-
         static void Main(string[] args)
         {
             UdpClient udpServer = new UdpClient(57000);
@@ -39,14 +33,14 @@ namespace Test_Server
                 {
                     Console.WriteLine($"User {Encoding.Default.GetString(data)} Cached!");
                     connectedUsers++;
-                    udpServer.Send(new byte[] { 1 }, 1, remoteEP);
                 }
                 else { Console.WriteLine($"MERP!"); }
 
-                UdpState state = new UdpState();
-                state.Endpoint = remoteEP;
-                state.Client = udpServer;
-                
+                InitiateCallback(udpServer, remoteEP);
+                while (!messageReceived)
+                {
+                    Thread.Sleep(50);
+                }
                 DateTime dateTime = DateTime.UtcNow;
 
                 byte[] informationToSend = new byte[50000];
@@ -67,11 +61,12 @@ namespace Test_Server
 
                     while (messageReceived != true)
                     {
-                        Thread.Sleep(50);
                         if (DateTime.UtcNow.Millisecond > dateTime.Millisecond + 1000)
                         {
                             udpServer.Send(informationToSend, 50000, remoteEP);
+                            Console.WriteLine($"Packet Sent..");
                         }
+                        Thread.Sleep(50);
                     }
 
                     messageReceived = false;
@@ -95,27 +90,16 @@ namespace Test_Server
 
                     while (messageReceived != true)
                     {
-                        Console.WriteLine($"Packet Sent..");
-                        Thread.Sleep(50);
                         if (DateTime.UtcNow.Millisecond > dateTime.Millisecond + 1000)
                         {
                             udpServer.Send(informationToSend, 50000, remoteEP);
+                            Console.WriteLine($"Packet Sent..");
                         }
+                        Thread.Sleep(50);
                     }
 
                     messageReceived = false;
                 }
-
-
-
-                /*for (int i = 0; i < 20; i++)
-                {
-                    packet.Add(udpServer.Receive(ref remoteEP));
-                    Console.WriteLine($"Received {i + 1} Packet(s)!");
-                    udpServer.Send(new byte[] { 1 }, 1, remoteEP);
-                }
-
-                Console.Write($"Total Packets Received: {packet.Count()}\n");*/
             }
         }
 
