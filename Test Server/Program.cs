@@ -50,20 +50,20 @@ namespace Test_Server
                 DateTime dateTime = DateTime.UtcNow;
 
                 byte[] informationToSend = new byte[50000];
-                String[] informationToWriteBiome = new String[1000000];
-                informationToWriteBiome = File.ReadAllLines("C:/Users/2/Desktop/test1biome.txt");
+                string[] informationToWriteBiome = new string[1000000];
+                informationToWriteBiome = File.ReadAllLines("C:/Users/Hal/Desktop/test1biome.txt");
 
                 for (int i = 0; i < 20; i++)
                 {
                     for (int ii = 0; ii < 50000; ii++)
                     {
-                        informationToSend[ii] = byte.Parse(informationToWriteBiome[i * ii]);
+                        informationToSend[ii] = byte.Parse(informationToWriteBiome[(i * 50000) + ii]);
                     }
 
                     udpServer.Send(informationToSend, 50000, remoteEP);
                     Console.WriteLine($"Packet Sent..");
                     Console.WriteLine("Listening for Messages..");
-                    udpServer.BeginReceive(new AsyncCallback(ReceiveCallback), state);
+                    InitiateCallback(udpServer, remoteEP);
 
                     while (messageReceived != true)
                     {
@@ -77,23 +77,25 @@ namespace Test_Server
                     messageReceived = false;
                 }
 
-                String[] informationToWriteMod = new String[1000000];
-                informationToWriteMod = File.ReadAllLines("C:/Users/2/Desktop/test1mod.txt");
+                dateTime = DateTime.UtcNow;
+                string[] informationToWriteMod = new string[1000000];
+                informationToWriteMod = File.ReadAllLines("C:/Users/Hal/Desktop/test1mod.txt");
 
                 for (int i = 0; i < 20; i++)
                 {
                     for (int ii = 0; ii < 50000; ii++)
                     {
-                        informationToSend[ii] = byte.Parse(informationToWriteMod[i * ii]);
+                        informationToSend[ii] = byte.Parse(informationToWriteMod[(i * 50000) + ii]);
                     }
 
                     udpServer.Send(informationToSend, 50000, remoteEP);
                     Console.WriteLine($"Packet Sent..");
                     Console.WriteLine("Listening for Messages..");
-                    udpServer.BeginReceive(new AsyncCallback(ReceiveCallback), state);
+                    InitiateCallback(udpServer, remoteEP);
 
                     while (messageReceived != true)
                     {
+                        Console.WriteLine($"Packet Sent..");
                         Thread.Sleep(50);
                         if (DateTime.UtcNow.Millisecond > dateTime.Millisecond + 1000)
                         {
@@ -117,13 +119,14 @@ namespace Test_Server
             }
         }
 
-        public static void ReceiveCallback(IAsyncResult ar)
+        public static async Task InitiateCallback(UdpClient client, IPEndPoint ep)
         {
-            IPEndPoint endpoint = (IPEndPoint)((UdpState)(ar.AsyncState)).Endpoint;
-            UdpClient client = (UdpClient)((UdpState)(ar.AsyncState)).Client;
+            await Task.Run(() => ReceiveCallback(client, ep));
+        }
 
-            byte[] receiveBytes = client.EndReceive(ar, ref endpoint);
-
+        public static void ReceiveCallback(UdpClient client, IPEndPoint ep)
+        {
+            client.Receive(ref ep);
             Console.WriteLine("Received Response!");
             messageReceived = true;
         }
