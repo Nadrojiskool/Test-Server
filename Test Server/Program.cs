@@ -37,6 +37,7 @@ namespace Test_Server
         public static int connectedUsers = 0;
         public static List<User> UserList = new List<User>();
         public static UdpClient udpServer = new UdpClient(57000);
+        public static byte delay = 9;
 
         static void Main(string[] args)
         {
@@ -52,7 +53,6 @@ namespace Test_Server
         {
             Stopwatch elapsed = new Stopwatch();
             elapsed.Start();
-            int delay = 100;
             while (AcceptConnections == true)
             {
                 IPEndPoint remoteEP = new IPEndPoint(IPAddress.Any, 57000);
@@ -61,18 +61,16 @@ namespace Test_Server
                 Console.WriteLine($"Received Information.. {data.Byte[0]} // {remoteEP}");
                 if (data.Byte[0] == 2)
                 {
-                    messageConfirmation = true;
+
                 }
                 else
                 {
-                    if (data.Byte[0] == delay + 100)
+                    if (data.Byte[0] == delay + 2)
                     {
-                        messageReceived = true;
                         delay = data.Byte[0];
                         Console.WriteLine($"New Delay: {delay}");
-                        data.Byte[0] += 100;
-                        Speaker(new byte[] { 2 }, client, remoteEP);
-                        Speaker(data.Byte, client, remoteEP);
+                        Speaker(new byte[] { (byte)(delay + 1) }, client, remoteEP);
+                        Speaker(new byte[] { 2, (byte)(delay + 1) }, client, remoteEP);
                     }
                 }
             }
@@ -82,27 +80,33 @@ namespace Test_Server
         {
             if (packet[0] == 2)
             {
-                while (!messageReceived)
-                {
-                    Console.WriteLine($"Sending Confirmation ({packet[0]})");
-                    client.Send(packet, 1, endpoint);
-                    await Task.Delay(1000);
-                }
-                messageReceived = false;
+                Speaker2(packet, client, endpoint);
             }
             else
             {
-                while (!messageConfirmation)
-                {
-                    Console.WriteLine($"Requesting Delay Increase to: {packet[0]}");
-                    client.Send(packet, 1, endpoint);
-                    await Task.Delay(packet[0]);
-                }
-                messageConfirmation = false;
+                SpeakerElse(packet, client, endpoint);
             }
         }
 
+        public static async Task Speaker2(byte[] packet, UdpClient client, IPEndPoint endpoint)
+        {
+            while (packet[1] > delay)
+            {
+                Console.WriteLine($"Sending Confirmation ({packet[0]})");
+                client.Send(packet, 2, endpoint);
+                await Task.Delay(1000);
+            }
+        }
 
+        public static async Task SpeakerElse(byte[] packet, UdpClient client, IPEndPoint endpoint)
+        {
+            while (packet[0] > delay)
+            {
+                Console.WriteLine($"Requesting Delay Increase to: {packet[0]}");
+                client.Send(packet, 1, endpoint);
+                await Task.Delay(500);
+            }
+        }
 
 
         /*public static bool AcceptConnections = true;

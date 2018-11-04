@@ -9,7 +9,7 @@ namespace Test_Server
 {
     public class Data
     {
-        public byte[] Byte = new byte[50000];
+        public byte[] Byte;
         public IPEndPoint Endpoint;
 
         public Data(byte[] b, IPEndPoint ep)
