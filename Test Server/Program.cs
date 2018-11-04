@@ -67,9 +67,11 @@ namespace Test_Server
                 {
                     if (data.Byte[0] == delay + 100)
                     {
+                        messageReceived = true;
                         delay = data.Byte[0];
                         Console.WriteLine($"New Delay: {delay}");
                         data.Byte[0] += 100;
+                        Speaker(new byte[] { 2 }, client, remoteEP);
                         Speaker(data.Byte, client, remoteEP);
                     }
                 }
@@ -78,13 +80,26 @@ namespace Test_Server
 
         public static async Task Speaker(byte[] packet, UdpClient client, IPEndPoint endpoint)
         {
-            while (!messageConfirmation)
+            if (packet[0] == 2)
             {
-                Console.WriteLine($"Requesting Delay Increase to: {packet[0]}");
-                client.Send(packet, 1, endpoint);
-                await Task.Delay(packet[0]);
+                while (!messageReceived)
+                {
+                    Console.WriteLine($"Sending Confirmation ({packet[0]})");
+                    client.Send(packet, 1, endpoint);
+                    await Task.Delay(1000);
+                }
+                messageReceived = false;
             }
-            messageConfirmation = false;
+            else
+            {
+                while (!messageConfirmation)
+                {
+                    Console.WriteLine($"Requesting Delay Increase to: {packet[0]}");
+                    client.Send(packet, 1, endpoint);
+                    await Task.Delay(packet[0]);
+                }
+                messageConfirmation = false;
+            }
         }
 
 
