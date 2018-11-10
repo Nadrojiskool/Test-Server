@@ -43,12 +43,7 @@ namespace Test_Server
         static void Main(string[] args)
         {
             UserList.Add(new User("Home", ServerEP));
-            Listener(udpServer);
-
-            while (AcceptConnections)
-            {
-                Task.Delay(5000);
-            }
+            Listener(udpServer).Wait();
         }
 
         public static async Task Listener(UdpClient client)
@@ -59,7 +54,8 @@ namespace Test_Server
             {
                 IPEndPoint remoteEP = new IPEndPoint(IPAddress.Any, 57000);
                 Console.WriteLine("Listening for Information..");
-                Data data = new Data(await Task.Run(() => client.Receive(ref remoteEP)), remoteEP);
+                byte[] bytes = await Task.Run(() => client.Receive(ref remoteEP));
+                Data data = new Data(bytes, remoteEP);
                 Console.WriteLine($"Received Information.. {data.Byte[0]} : {remoteEP}");
                 DataProcessor(data.Byte, client, remoteEP);
             }
