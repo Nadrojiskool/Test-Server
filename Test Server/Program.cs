@@ -56,8 +56,8 @@ namespace Test_Server
                 Console.WriteLine("Listening for Information..");
                 byte[] bytes = await Task.Run(() => client.Receive(ref remoteEP));
                 Data data = new Data(bytes, remoteEP);
-                Console.WriteLine($"Received Information.. {data.Byte[0]} : {remoteEP}");
-                DataProcessor(data.Byte, client, remoteEP);
+                Console.WriteLine($"Received Information.. {data.Bytes[0]} : {remoteEP}");
+                DataProcessor(data.Bytes, client, remoteEP);
             }
         }
 
