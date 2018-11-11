@@ -43,12 +43,7 @@ namespace Test_Server
         static void Main(string[] args)
         {
             UserList.Add(new User("Home", ServerEP));
-            Listener(udpServer);
-
-            while (AcceptConnections)
-            {
-                Task.Delay(5000);
-            }
+            Listener(udpServer).Wait();
         }
 
         public static async Task Listener(UdpClient client)
@@ -59,9 +54,10 @@ namespace Test_Server
             {
                 IPEndPoint remoteEP = new IPEndPoint(IPAddress.Any, 57000);
                 Console.WriteLine("Listening for Information..");
-                Data data = new Data(await Task.Run(() => client.Receive(ref remoteEP)), remoteEP);
-                Console.WriteLine($"Received Information.. {data.Byte[0]} : {remoteEP}");
-                DataProcessor(data.Byte, client, remoteEP);
+                byte[] bytes = await Task.Run(() => client.Receive(ref remoteEP));
+                Data data = new Data(bytes, remoteEP);
+                Console.WriteLine($"Received Information.. {data.Bytes[0]} : {remoteEP}");
+                DataProcessor(data.Bytes, client, remoteEP);
             }
         }
 
@@ -73,24 +69,25 @@ namespace Test_Server
                 if (user.Endpoint.Equals(endpoint))
                 {
                     Console.WriteLine($"Running Task #{packet[1]} for {endpoint}");
+
                     if (packet[0] == 2)
                     {
-                        foreach (Job job in user.JobList)
+                        foreach (Job Job in user.JobList)
                         {
-                            if (job.ID == packet[1])
+                            if (Job.ID == packet[1])
                             {
-                                job.IsCompleted = true;
+                                Job.IsCompleted = true;
                                 return;
                             }
                         }
                     }
                     else if (packet[0] == 5)
                     {
+                        Console.WriteLine($"{user.JobList.Count()}");
                         foreach (Job Job in user.JobList)
                         {
-                            if (Job.ID.Equals(packet[1]))
+                            if (Job.ID == packet[1])
                             {
-
                                 return;
                             }
                         }
@@ -136,26 +133,33 @@ namespace Test_Server
                 }
                 else if (job.Type == 5)
                 {
+                    Console.WriteLine($"Job of Type 5");
                     // Break Into 20 Packets //
+                    //49900//49905//49910//49915//49920//49925//49930//49935//49940//49945
                     //49950//49955//49960//49965//49970//49975//49980//49985//49990//49995
-                    //50005//50010//50015//50020//50025//50030//50035//50040//50045//50050
                     string[] informationToReadBiome = new string[1000000];
                     informationToReadBiome = File.ReadAllLines("C:/Users/Hal/Desktop/test1biome.txt");
 
                     for (int i = 0; i < 20; i++)
                     {
-                        for (int ii = 0; ii < (49950 + (i * 5)); ii++)
+                        Console.WriteLine($"Starting i{i}");
+                        byte[] iSend = new byte[49900 + (i * 5) + 2];
+                        iSend[0] = job.Type;
+                        iSend[1] = job.ID;
+                        for (int ii = 0; ii < (49900 + (i * 5)); ii++)
                         {
-                            byte[] iSend = new byte[49950 + (i * 5) + 2];
-                            iSend[0] = job.Type;
-                            iSend[1] = job.ID;
-                            iSend[ii] = byte.Parse(informationToReadBiome[(i * (49950 + (i * 5))) + ii]);
-                            Speaker(iSend, udpServer, job.Employee);
+                            iSend[2 + ii] = byte.Parse(informationToReadBiome[(i * (49900 + (i * 5))) + ii]);
                         }
+                        Console.WriteLine("Sending");
+                        Speaker(iSend, udpServer, job.Employee);
+
+                        await Task.Delay(20);
                     }
-                    await Task.Delay(5000);
+                    await Task.Delay(500);
                 }
+                Console.WriteLine($"{job.IsCompleted}");
             }
+            Console.WriteLine($"{job.IsCompleted}");
         }
 
         public static async Task Speaker(byte[] packet, UdpClient client, IPEndPoint endpoint)
