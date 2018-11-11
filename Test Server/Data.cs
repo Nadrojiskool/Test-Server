@@ -14,7 +14,7 @@ namespace Test_Server
 
         public Data(byte[] b, IPEndPoint ep)
         {
-            Byte = b;
+            Bytes = b;
             Endpoint = ep;
         }
     }

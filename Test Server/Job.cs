@@ -11,13 +11,13 @@ namespace Test_Server
     public class Job
     {
         public List<byte[]> ByteList = new List<byte[]>();
-        public byte ID;
-        public byte Type;
-        public IPEndPoint Employee;
-        public IPEndPoint Employer;
+        public byte ID { get; set; }
+        public byte Type { get; set; }
+        public IPEndPoint Employee { get; set; }
+        public IPEndPoint Employer { get; set; }
         public Stopwatch ElapsedTime;
-        public bool IsActive;
-        public bool IsCompleted;
+        public bool IsActive = false;
+        public bool IsCompleted = false;
 
         public Job(byte id, byte type, IPEndPoint ep, IPEndPoint EP)
         {
@@ -25,7 +25,6 @@ namespace Test_Server
             Type = type;
             Employee = ep;
             Employer = EP;
-            ElapsedTime.Start();
         }
     }
 }
