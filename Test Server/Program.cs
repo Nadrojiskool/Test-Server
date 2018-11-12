@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 
+
 /*  Server Commands
  * 0: Establish Connection (Not In Use)
  * 1: Ready to Receive
@@ -29,7 +30,7 @@ using System.Threading.Tasks;
 
 namespace Test_Server
 {
-    public class Program
+    public static class Program
     {
         public static bool AcceptConnections = true;
         public static bool messageReceived = false;
@@ -39,11 +40,18 @@ namespace Test_Server
         public static UdpClient udpServer = new UdpClient(57000);
         public static IPEndPoint ServerEP = new IPEndPoint(IPAddress.Parse("24.20.157.144"), 57000);
         public static byte delay = 9;
+        public static IEnumerable<(T item, int index)> WithIndex<T>(this IEnumerable<T> self) => self.Select((item, index) => (item, index));
 
         static void Main(string[] args)
         {
             UserList.Add(new User("Home", ServerEP));
             Listener(udpServer).Wait();
+        }
+
+        public static async Task GarbageCollector(string descriptor)
+        {
+            Console.WriteLine($"Collecting Garbage for {descriptor}");
+            GC.Collect();
         }
 
         public static async Task Listener(UdpClient client)
@@ -64,7 +72,7 @@ namespace Test_Server
         public static async Task DataProcessor(byte[] packet, UdpClient client, IPEndPoint endpoint)
         {
             Console.WriteLine($"Processing {packet[0]} : {endpoint}");
-            foreach (User user in UserList)
+            foreach (var (user, index) in UserList.WithIndex())
             {
                 if (user.Endpoint.Equals(endpoint))
                 {
@@ -98,19 +106,13 @@ namespace Test_Server
                     }
                     else
                     {
-                        /*if (packet[0] == delay + 2)
-                        {
-                            delay = packet[0];
-                            Console.WriteLine($"New Delay: {delay}");
-                            Speaker(new byte[] { (byte)(delay + 1) }, client, endpoint);
-                            Speaker(new byte[] { 2, (byte)(delay + 1) }, client, endpoint);
-                        }*/
+
                     }
                     return;
                 }
                 else
                 {
-                    Console.WriteLine($"No Match for User");
+                    Console.WriteLine($"No Match for User {index + 1}/{UserList.Count()}");
                 }
             }
 
@@ -134,32 +136,46 @@ namespace Test_Server
                 else if (job.Type == 5)
                 {
                     Console.WriteLine($"Job of Type 5");
-                    // Break Into 20 Packets //
-                    //49900//49905//49910//49915//49920//49925//49930//49935//49940//49945
-                    //49950//49955//49960//49965//49970//49975//49980//49985//49990//49995
-                    string[] informationToReadBiome = new string[1000000];
+                    string[] informationToReadBiome = new string[1000000]; 
                     informationToReadBiome = File.ReadAllLines("C:/Users/Hal/Desktop/test1biome.txt");
 
-                    for (int i = 0; i < 20; i++)
+                    /////////////////////////////////////
+                    //      Break Into 25 Packets      //
+                    /////////////////////////////////////
+                    //39940//39945//39950//39955//39960// 0000 / 0000 / 0005 / 0015 / 0030 / 
+                    //39965//39970//39975//39980//39985// 0050 / 0075 / 0105 / 0140 / 0180 /
+                    //39990//39995//40000//40005//40010// 0225 / 0275 / 0330 / 0390 / 0455 /
+                    //40015//40020//40025//40030//40035// 0525 / 0600 / 0680 / 0765 / 0855 /
+                    //40040//40045//40050//40055//40060// 0950 / 1050 / 1155 / 1265 / 1380 /
+                    /////////////////////////////////////
+                    int[] offset = new int[] { 0000, 0000, 0005, 0015, 0030,
+                                                0050, 0075, 0105, 0140, 0180,
+                                                0225, 0275, 0330, 0390, 0455,
+                                                0525, 0600, 0680, 0765, 0855,
+                                                0950, 1050, 1155, 1265, 1380 };
+                    for (int i = 0; i < 25; i++)
                     {
                         Console.WriteLine($"Starting i{i}");
-                        byte[] iSend = new byte[49900 + (i * 5) + 2];
+                        byte[] iSend = new byte[39940 + (i * 5) + 2];
                         iSend[0] = job.Type;
                         iSend[1] = job.ID;
-                        for (int ii = 0; ii < (49900 + (i * 5)); ii++)
+                        for (int ii = 0; ii < (39940 + (i * 5)); ii++)
                         {
-                            iSend[2 + ii] = byte.Parse(informationToReadBiome[(i * (49900 + (i * 5))) + ii]);
+                            iSend[2 + ii] = byte.Parse(informationToReadBiome[i * 39940 + offset[i]]);
                         }
                         Console.WriteLine("Sending");
                         Speaker(iSend, udpServer, job.Employee);
 
-                        await Task.Delay(20);
+                        await Task.Delay(25);
                     }
-                    await Task.Delay(500);
+                    await Task.Delay(1000);
                 }
                 Console.WriteLine($"{job.IsCompleted}");
             }
             Console.WriteLine($"{job.IsCompleted}");
+
+            await GarbageCollector($"Job Type / ID {job.Type} / {job.ID} for Employer / Employee {job.Employer} / {job.Employee}");
+            return;
         }
 
         public static async Task Speaker(byte[] packet, UdpClient client, IPEndPoint endpoint)
@@ -181,7 +197,7 @@ namespace Test_Server
 
         public static async Task Speaker2(byte[] packet, UdpClient client, IPEndPoint endpoint)
         {
-            while (packet[1] > delay)
+            while (true)
             {
                 Console.WriteLine($"Sending Confirmation ({packet[0]})");
                 client.Send(packet, 2, endpoint);
@@ -189,33 +205,9 @@ namespace Test_Server
             }
         }
 
-        public static async Task SpeakerElse(byte[] packet, UdpClient client, IPEndPoint endpoint)
-        {
-            while (packet[0] > delay)
-            {
-                Console.WriteLine($"Requesting Delay Increase to: {packet[0]}");
-                client.Send(packet, 1, endpoint);
-                await Task.Delay(500);
-            }
-        }
 
 
-        /*public static bool AcceptConnections = true;
-        public static bool messageReceived = false;
-        public static bool messageConfirmation = false;
-        public static int connectedUsers = 0;
-        public static List<User> UserList = new List<User>();
-        public static UdpClient udpServer = new UdpClient(57000);
-
-        static void Main(string[] args)
-        {
-            NewConnectionListener(udpServer);
-            
-            while (AcceptConnections)
-            {
-                Task.Delay(1000);
-            }
-        }
+        /*
 
         public static async Task NewConnectionListener(UdpClient client)
         {
@@ -254,76 +246,6 @@ namespace Test_Server
             else { Console.WriteLine($"MERP!"); }
         }
 
-        public static async Task<Data> DataListener(UdpClient client)
-        {
-            IPEndPoint remoteEP = new IPEndPoint(IPAddress.Any, 57000);
-            Console.WriteLine("Listening for Information..");
-            Data data = new Data(await Task.Run(() => client.Receive(ref remoteEP)), remoteEP);
-            Console.WriteLine("Received Information..");
-            Console.WriteLine($"{data.Byte[0].ToString()} // {remoteEP}");
-            return data;
-        }
-
-        public static async Task DataSender(UdpClient client, IPEndPoint endpoint)
-        {
-            byte[] informationToSend = new byte[50000];
-            string[] informationToWriteBiome = new string[1000000];
-            informationToWriteBiome = File.ReadAllLines("C:/Users/Hal/Desktop/test1biome.txt");
-
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            for (int i = 0; i < 20; i++)
-            {
-                for (int ii = 0; ii < 50000; ii++)
-                {
-                    informationToSend[ii] = byte.Parse(informationToWriteBiome[(i * 50000) + ii]);
-                }
-
-                client.Send(informationToSend, 50000, endpoint);
-                Console.WriteLine($"Packet Sent..");
-                Console.WriteLine("Listening for Messages..");
-
-                while (!messageConfirmation)
-                {
-                    if (stopwatch.ElapsedMilliseconds > 1000)
-                    {
-                        client.Send(informationToSend, 50000, endpoint);
-                        Console.WriteLine($"Packet Sent..");
-                        stopwatch.Restart();
-                    }
-                    Thread.Sleep(50);
-                }
-
-                messageConfirmation = false;
-            }
-            
-            string[] informationToWriteMod = new string[1000000];
-            informationToWriteMod = File.ReadAllLines("C:/Users/Hal/Desktop/test1mod.txt");
-
-            for (int i = 0; i < 20; i++)
-            {
-                for (int ii = 0; ii < 50000; ii++)
-                {
-                    informationToSend[ii] = byte.Parse(informationToWriteMod[(i * 50000) + ii]);
-                }
-
-                client.Send(informationToSend, 50000, endpoint);
-                Console.WriteLine($"Packet Sent..");
-                Console.WriteLine("Listening for Messages..");
-
-                while (!messageConfirmation)
-                {
-                    if (stopwatch.ElapsedMilliseconds > 1000)
-                    {
-                        client.Send(informationToSend, 50000, endpoint);
-                        Console.WriteLine($"Packet Sent..");
-                    }
-                    Thread.Sleep(50);
-                }
-
-                messageConfirmation = false;
-            }
-        }*/
+        */
     }
 }
