@@ -148,11 +148,7 @@ namespace Test_Server
                     //40015//40020//40025//40030//40035// 0525 / 0600 / 0680 / 0765 / 0855 /
                     //40040//40045//40050//40055//40060// 0950 / 1050 / 1155 / 1265 / 1380 /
                     /////////////////////////////////////
-                    int[] offset = new int[] { 0000, 0000, 0005, 0015, 0030,
-                                                0050, 0075, 0105, 0140, 0180,
-                                                0225, 0275, 0330, 0390, 0455,
-                                                0525, 0600, 0680, 0765, 0855,
-                                                0950, 1050, 1155, 1265, 1380 };
+                    int count = 0;
                     for (int i = 0; i < 25; i++)
                     {
                         Console.WriteLine($"Starting i{i}");
@@ -161,7 +157,8 @@ namespace Test_Server
                         iSend[1] = job.ID;
                         for (int ii = 0; ii < (39940 + (i * 5)); ii++)
                         {
-                            iSend[2 + ii] = byte.Parse(informationToReadBiome[i * 39940 + offset[i]]);
+                            iSend[2 + ii] = byte.Parse(informationToReadBiome[count]);
+                            count++;
                         }
                         Console.WriteLine("Sending");
                         Speaker(iSend, udpServer, job.Employee);
