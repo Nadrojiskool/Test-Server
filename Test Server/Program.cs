@@ -40,105 +40,65 @@ namespace Test_Server
         public static UdpClient udpServer = new UdpClient(57000);
         public static IPEndPoint ServerEP = new IPEndPoint(IPAddress.Parse("24.20.157.144"), 57000);
         public static byte delay = 9;
-        public static IEnumerable<(T item, int index)> WithIndex<T>(this IEnumerable<T> self) => self.Select((item, index) => (item, index));
+        public static IEnumerable<(T item, int index)> WithIndex<T>(this IEnumerable<T> self) => self.Select((item, index) => (item, index + 1));
 
         static void Main(string[] args)
         {
-            UserList.Add(new User("Home", ServerEP));
             Listener(udpServer).Wait();
         }
 
         public static async Task GarbageCollector(string descriptor)
         {
-            Console.WriteLine($"Collecting Garbage for {descriptor}");
+            Console.WriteLine($"Blorg! {descriptor}");
             GC.Collect();
         }
 
         public static async Task Listener(UdpClient client)
         {
+            IPEndPoint endpoint = new IPEndPoint(IPAddress.Any, 57000);
             Stopwatch elapsed = new Stopwatch();
+            byte[] packet;
             elapsed.Start();
             while (AcceptConnections == true)
             {
-                IPEndPoint remoteEP = new IPEndPoint(IPAddress.Any, 57000);
-                Console.WriteLine("Listening for Information..");
-                byte[] bytes = await Task.Run(() => client.Receive(ref remoteEP));
-                Data data = new Data(bytes, remoteEP);
-                Console.WriteLine($"Received Information.. {data.Bytes[0]} : {remoteEP}");
-                DataProcessor(data.Bytes, client, remoteEP);
+                DataProcessor(packet = await Task.Run(() => client.Receive(ref endpoint)), endpoint);
             }
         }
 
-        public static async Task DataProcessor(byte[] packet, UdpClient client, IPEndPoint endpoint)
+        public static async Task DataProcessor(byte[] packet, IPEndPoint endpoint)
         {
             Console.WriteLine($"Processing {packet[0]} : {endpoint}");
-            foreach (var (user, index) in UserList.WithIndex())
-            {
-                if (user.Endpoint.Equals(endpoint))
-                {
-                    Console.WriteLine($"Running Task #{packet[1]} for {endpoint}");
-
-                    if (packet[0] == 2)
-                    {
-                        foreach (Job Job in user.JobList)
-                        {
-                            if (Job.ID == packet[1])
-                            {
-                                Job.IsCompleted = true;
-                                return;
-                            }
-                        }
-                    }
-                    else if (packet[0] == 5)
-                    {
-                        Console.WriteLine($"{user.JobList.Count()}");
-                        foreach (Job Job in user.JobList)
-                        {
-                            if (Job.ID == packet[1])
-                            {
-                                return;
-                            }
-                        }
-                        Console.WriteLine($"Creating New Job Type {packet[0]} ID {packet[1]}");
-                        Job job = new Job(packet[1], packet[0], endpoint, ServerEP);
-                        user.JobList.Add(job);
-                        JobManager(job);
-                    }
-                    else
-                    {
-
-                    }
-                    return;
-                }
-                else
-                {
-                    Console.WriteLine($"No Match for User {index + 1}/{UserList.Count()}");
-                }
-            }
+            foreach (var (user, index) in UserList.WithIndex()) { if (user.Endpoint.Equals(endpoint)) {
+                    if (packet[0] == 2) { foreach (Job Job in user.JobList) { if (Job.ID == packet[1]) {
+                                Job.IsCompleted = true; }}}
+                    else if (packet[0] == 5) {
+                        CreateJob(user, packet, endpoint); }
+                    return; }}
 
             Console.WriteLine($"Adding Bob: {endpoint}");
             UserList.Add(new User("Bob", endpoint));
+        }
+
+        public static async Task CreateJob(User user, byte[] packet, IPEndPoint endpoint)
+        {
+            foreach (Job Job in user.JobList) { if (Job.ID == packet[1]) {
+                    return; }}
+
+            Console.WriteLine($"Creating New Job Type {packet[0]} ID {packet[1]}");
+            Job job = new Job(packet[1], packet[0], endpoint, ServerEP);
+            user.JobList.Add(job);
+            JobManager(job);
         }
 
         public static async Task JobManager(Job job)
         {
             while (!job.IsCompleted)
             {
-
-                /*if (job.ElapsedTime.ElapsedMilliseconds > 5000)
-                {
-
-                }*/
-                if (job.Type == 2)
-                {
-                    Console.WriteLine($"Job of Type 2");
-                }
-                else if (job.Type == 5)
-                {
-                    Console.WriteLine($"Job of Type 5");
-                    string[] informationToReadBiome = new string[1000000]; 
-                    informationToReadBiome = File.ReadAllLines("C:/Users/Hal/Desktop/test1biome.txt");
-
+                /*if (job.ElapsedTime.ElapsedMilliseconds > 5000) {  }*/
+                if (job.Type == 2) {
+                    Console.WriteLine($"Job of Type 2"); }
+                else if (job.Type == 5) {
+                    #region Packet Sizes
                     /////////////////////////////////////
                     //      Break Into 25 Packets      //
                     /////////////////////////////////////
@@ -148,48 +108,38 @@ namespace Test_Server
                     //40015//40020//40025//40030//40035// 0525 / 0600 / 0680 / 0765 / 0855 /
                     //40040//40045//40050//40055//40060// 0950 / 1050 / 1155 / 1265 / 1380 /
                     /////////////////////////////////////
+                    #endregion
+                    Console.WriteLine($"Job of Type 5");
+                    string[] informationToReadBiome = new string[1000000]; 
+                    informationToReadBiome = File.ReadAllLines("C:/Users/Hal/Desktop/test1biome.txt");
                     int count = 0;
-                    for (int i = 0; i < 25; i++)
-                    {
-                        Console.WriteLine($"Starting i{i}");
+                    for (int i = 0; i < 25; i++) {
                         byte[] iSend = new byte[39940 + (i * 5) + 2];
                         iSend[0] = job.Type;
                         iSend[1] = job.ID;
-                        for (int ii = 0; ii < (39940 + (i * 5)); ii++)
-                        {
+                        for (int ii = 0; ii < (39940 + (i * 5)); ii++) {
                             iSend[2 + ii] = byte.Parse(informationToReadBiome[count]);
-                            count++;
-                        }
-                        Console.WriteLine("Sending");
-                        Speaker(iSend, udpServer, job.Employee);
+                            count++; }
 
-                        await Task.Delay(25);
-                    }
-                    await Task.Delay(1000);
-                }
+                        Speaker(iSend, udpServer, job.Employee);
+                        await Task.Delay(8); }
+
+                    await Task.Delay(3000); }
+
                 Console.WriteLine($"{job.IsCompleted}");
             }
-            Console.WriteLine($"{job.IsCompleted}");
-
-            await GarbageCollector($"Job Type / ID {job.Type} / {job.ID} for Employer / Employee {job.Employer} / {job.Employee}");
+            
+            GarbageCollector($"Job Type({job.Type}) ID({job.ID}) for {Environment.NewLine}   // Employer ({job.Employer}) / Employee ({job.Employee}) //");
             return;
         }
 
         public static async Task Speaker(byte[] packet, UdpClient client, IPEndPoint endpoint)
         {
-            if (packet[0] == 2)
-            {
-                Speaker2(packet, client, endpoint);
-            }
-            else if (packet[0] == 5)
-            {
+            if (packet[0] == 2) {
+                Speaker2(packet, client, endpoint); }
+            else if (packet[0] == 5) {
                 Console.WriteLine($"Sending Information Type {packet[0]} ID {packet[1]} Length {packet.Length}");
-                client.Send(packet, packet.Length, endpoint);
-            }
-            else
-            {
-                //SpeakerElse(packet, client, endpoint);
-            }
+                client.Send(packet, packet.Length, endpoint); }
         }
 
         public static async Task Speaker2(byte[] packet, UdpClient client, IPEndPoint endpoint)
