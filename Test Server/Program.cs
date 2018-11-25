@@ -67,12 +67,23 @@ namespace Test_Server
 
         public static async Task DataProcessor(byte[] packet, IPEndPoint endpoint)
         {
-            Console.WriteLine($"Processing {packet[0]} : {endpoint}");
-            foreach (var (user, index) in UserList.WithIndex()) { if (user.Endpoint.Equals(endpoint)) {
-                    if (packet[0] == 2) { foreach (Job Job in user.JobList) { if (Job.ID == packet[1]) {
+            Console.WriteLine($"Processing {packet[0]}/{packet[1]} : {endpoint}");
+            foreach (var (user, index) in UserList.WithIndex()) {
+                if (user.Endpoint.Equals(endpoint)) {
+                    if (packet[0] == 2) {
+                        foreach (Job Job in user.JobList) {
+                            if (Job.ID == packet[1]) {
                                 Job.IsCompleted = true; }}}
                     else if (packet[0] == 5) {
-                        CreateJob(user, packet, endpoint); }
+                        if (user.JobList.Count > 0) {
+                            foreach (Job Job in user.JobList) {
+                                if (Job.ID == packet[1]) {
+                                    return; }
+                                else {
+                                    CreateJob(user, packet, endpoint); }}}
+                        else {
+                            CreateJob(user, packet, endpoint); }}
+
                     return; }}
 
             Console.WriteLine($"Adding Bob: {endpoint}");
@@ -81,9 +92,6 @@ namespace Test_Server
 
         public static async Task CreateJob(User user, byte[] packet, IPEndPoint endpoint)
         {
-            foreach (Job Job in user.JobList) { if (Job.ID == packet[1]) {
-                    return; }}
-
             Console.WriteLine($"Creating New Job Type {packet[0]} ID {packet[1]}");
             Job job = new Job(packet[1], packet[0], endpoint, ServerEP);
             user.JobList.Add(job);
@@ -122,14 +130,33 @@ namespace Test_Server
                             count++; }
 
                         Speaker(iSend, udpServer, job.Employee);
-                        await Task.Delay(8); }
+                        await Task.Delay(25);
+                    }
 
+                    string[] informationToReadLand = new string[1000000];
+                    informationToReadLand = File.ReadAllLines("C:/Users/Hal/Desktop/test1mod.txt");
+                    count = 0;
+                    for (int i = 0; i < 25; i++)
+                    {
+                        byte[] iSend = new byte[39940 + (i * 5) + 2];
+                        iSend[0] = 6;
+                        iSend[1] = job.ID;
+                        for (int ii = 0; ii < (39940 + (i * 5)); ii++)
+                        {
+                            iSend[2 + ii] = byte.Parse(informationToReadLand[count]);
+                            count++;
+                        }
+
+                        Speaker(iSend, udpServer, job.Employee);
+                        await Task.Delay(25);
+                    }
+
+                    GarbageCollector($"Job Type({job.Type}) ID({job.ID}) for {Environment.NewLine}   // Employer ({job.Employer}) / Employee ({job.Employee}) //");
                     await Task.Delay(3000); }
 
                 Console.WriteLine($"{job.IsCompleted}");
             }
             
-            GarbageCollector($"Job Type({job.Type}) ID({job.ID}) for {Environment.NewLine}   // Employer ({job.Employer}) / Employee ({job.Employee}) //");
             return;
         }
 
@@ -137,8 +164,8 @@ namespace Test_Server
         {
             if (packet[0] == 2) {
                 Speaker2(packet, client, endpoint); }
-            else if (packet[0] == 5) {
-                Console.WriteLine($"Sending Information Type {packet[0]} ID {packet[1]} Length {packet.Length}");
+            else if (packet[0] == 5 || packet[0] == 6) {
+                //Console.WriteLine($"Sending Information Type {packet[0]} ID {packet[1]} Length {packet.Length}");
                 client.Send(packet, packet.Length, endpoint); }
         }
 
