@@ -12,6 +12,7 @@ namespace Test_Server
     {
         public string Username;
         public IPEndPoint Endpoint;
+        public List<Job> JobList = new List<Job>();
 
         public User(string username, IPEndPoint endpoint)
         {
